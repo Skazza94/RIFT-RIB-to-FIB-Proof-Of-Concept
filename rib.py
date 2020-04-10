@@ -1,5 +1,6 @@
 import pytricia
 
+from route import Route
 from destination import Destination
 from fib import Fib
 
@@ -15,6 +16,41 @@ class Rib:
         self.destinations = pytricia.PyTricia()
         self.fib = Fib()
 
+    def put_route(self, route):
+        # If there is no Destination object for the prefix, create a new Destination object
+        # for the given prefix and insert it in the Trie
+        if not self.destinations.has_key(route.prefix):
+            prefix_dest = Destination(self, route.prefix)
+            self.destinations.insert(route.prefix, prefix_dest)
+        else:
+            prefix_dest = self.destinations.get(route.prefix)
+
+        different = prefix_dest.put_route(route)
+
+        # This condition is triggered only if all the next hops are added as negative next hops!
+        if not prefix_dest.next_hops:
+            assert not new_route.positive_next_hops
+            # If the given prefix has no more next hops, flag it as unreachable in the FIB
+            # self.fib.routes[prefix] = "unreachable"
+            # Since the given prefix is unreachable, remove superfluous children routes of the
+            # prefix from the RIB and the FIB
+            for child_prefix in self.destinations.children(prefix_dest.prefix):
+                del self.destinations[child_prefix]
+                # del self.fib.routes[child_prefix]
+            # We must not update the FIB for this prefix, so return
+            return
+        # Force recomputing of children next hops since they need to add new next hops in their
+        # sets. After recomputing, reassign the child computed next hops to the FIB.
+        # N.B.: self.destinations.get(child_prefix) contains all the children at each level of the current prefix, so
+        # recursion is not needed
+        for child_prefix in self.destinations.children(prefix_dest.prefix):
+            pass
+            # self.fib.routes[child_prefix] = child_prefix_dest.next_hops
+
+        if :
+            # self.fib.update()
+            pass
+
     def add_route(self, prefix, next_hops, disagg_type=True):
         """
         Adds a set of next hops for a given prefix.
@@ -26,19 +62,19 @@ class Rib:
         # If there is no Destination object for the prefix, create a new Destination object
         # for the given prefix and insert it in the Trie
         if not self.destinations.has_key(prefix):
-            self.destinations.insert(prefix, Destination(self, prefix))
+            self.destinations.insert(prefix, Route(self, prefix))
         # Get the Destination object associated to the given prefix
         prefix_dest = self.destinations.get(prefix)
         if disagg_type:
             # If it is a positive disaggregation
             # Add the next hops in the positive ones for the prefix
-            prefix_dest.add_positive_next_hops(next_hops)
+            prefix_dest._add_positive_next_hops(next_hops)
         else:
             # If it is a negative disaggregation
             # Add the next hops in the negative ones for the prefix
-            prefix_dest.add_negative_next_hops(next_hops)
+            prefix_dest._add_negative_next_hops(next_hops)
 
-            if not prefix_dest.next_hops:
+            if not prefix_dest.get_next_hops:
                 # If the given prefix has no more next hops, flag it as unreachable in the FIB
                 self.fib.routes[prefix] = "unreachable"
                 # Since the given prefix is unreachable, remove superfluous children routes of the
@@ -55,9 +91,9 @@ class Rib:
         for child_prefix in self.destinations.children(prefix):
             child_prefix_dest = self.destinations.get(child_prefix)
             child_prefix_dest.refresh()
-            self.fib.routes[child_prefix] = child_prefix_dest.next_hops
+            self.fib.routes[child_prefix] = child_prefix_dest.get_next_hops
         # Assign the computed next hops for the given prefix in the FIB
-        self.fib.routes[prefix] = prefix_dest.next_hops
+        self.fib.routes[prefix] = prefix_dest.get_next_hops
 
     def delete_route(self, prefix, next_hops, disagg_type=True):
         """
@@ -90,13 +126,13 @@ class Rib:
         # A route is superfluous if the set of next hops is empty
         if not self._delete_pos_disagg_superfluous_prefix(prefix_dest):
             # If there are no superfluous routes, update the next hops in the FIB
-            self.fib.routes[prefix_dest.prefix] = prefix_dest.next_hops
+            self.fib.routes[prefix_dest.prefix] = prefix_dest.get_next_hops
         # Update the next hops for each child
         for child_prefix in children_prefixes:
             child_prefix_dest = self.destinations.get(child_prefix)
             child_prefix_dest.remove_positive_next_hops(next_hops)
             if not self._delete_pos_disagg_superfluous_prefix(child_prefix_dest):
-                self.fib.routes[child_prefix] = child_prefix_dest.next_hops
+                self.fib.routes[child_prefix] = child_prefix_dest.get_next_hops
 
     def _delete_neg_disagg(self, prefix_dest, next_hops):
         """
@@ -115,13 +151,13 @@ class Rib:
         # parent prefix
         if not self._delete_neg_disagg_superfluous_prefix(prefix_dest):
             # If there are no superfluous routes, update the next hops in the FIB
-            self.fib.routes[prefix_dest.prefix] = prefix_dest.next_hops
+            self.fib.routes[prefix_dest.prefix] = prefix_dest.get_next_hops
         # Update the next hops for each child
         for child_prefix in children_prefixes:
             child_prefix_dest = self.destinations.get(child_prefix)
             child_prefix_dest.remove_negative_next_hops(next_hops)
             if not self._delete_neg_disagg_superfluous_prefix(child_prefix_dest):
-                self.fib.routes[prefix_dest.prefix] = prefix_dest.next_hops
+                self.fib.routes[prefix_dest.prefix] = prefix_dest.get_next_hops
 
     def _delete_pos_disagg_superfluous_prefix(self, prefix_dest):
         """
@@ -130,7 +166,7 @@ class Rib:
         :param prefix_dest: the Destination object of a prefix
         :return: True if the prefix is superfluous and has been removed, else False
         """
-        if not prefix_dest.next_hops:
+        if not prefix_dest.get_next_hops:
             self.destinations.delete(prefix_dest.prefix)
             del self.fib.routes[prefix_dest.prefix]
             return True
@@ -147,7 +183,7 @@ class Rib:
         parent_prefix = self.destinations.parent(prefix_dest.prefix)
         assert parent_prefix is not None
         parent_prefix_dest = self.destinations.get(parent_prefix)
-        if prefix_dest.next_hops == parent_prefix_dest.next_hops:
+        if prefix_dest.get_next_hops == parent_prefix_dest.get_next_hops:
             self.destinations.delete(prefix_dest.prefix)
             del self.fib.routes[prefix_dest.prefix]
             return True

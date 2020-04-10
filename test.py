@@ -26,7 +26,7 @@ def test_add_default_route():
     rib.add_route(default_prefix, default_next_hops)
     assert rib.destinations.get(default_prefix)._positive_next_hops == default_next_hops
     assert rib.destinations.get(default_prefix)._negative_next_hops == set()
-    assert rib.destinations.get(default_prefix).next_hops == default_next_hops
+    assert rib.destinations.get(default_prefix).get_next_hops == default_next_hops
     assert rib.fib.routes[default_prefix] == default_next_hops
 
 
@@ -38,7 +38,7 @@ def test_add_negative_disaggregation():
     assert rib.destinations.get(first_negative_disagg_prefix)._positive_next_hops == set()
     assert rib.destinations.get(first_negative_disagg_prefix)._negative_next_hops == \
            first_negative_disagg_next_hops
-    assert rib.destinations.get(first_negative_disagg_prefix).next_hops == \
+    assert rib.destinations.get(first_negative_disagg_prefix).get_next_hops == \
            default_next_hops - first_negative_disagg_next_hops
     assert rib.fib.routes[first_negative_disagg_prefix] == \
            default_next_hops - first_negative_disagg_next_hops
@@ -54,7 +54,7 @@ def test_add_two_negative_disaggregation():
     assert rib.destinations.get(second_negative_disagg_prefix)._positive_next_hops == set()
     assert rib.destinations.get(second_negative_disagg_prefix)._negative_next_hops == \
            second_negative_disagg_next_hops
-    assert rib.destinations.get(second_negative_disagg_prefix).next_hops == \
+    assert rib.destinations.get(second_negative_disagg_prefix).get_next_hops == \
            default_next_hops - second_negative_disagg_next_hops
     assert rib.fib.routes[second_negative_disagg_prefix] == \
            default_next_hops - second_negative_disagg_next_hops
@@ -73,13 +73,13 @@ def test_remove_default_next_hop():
     assert rib.destinations.get(
         default_prefix)._positive_next_hops == default_next_hops - failed_next_hop
     assert rib.destinations.get(default_prefix)._negative_next_hops == set()
-    assert rib.destinations.get(default_prefix).next_hops == default_next_hops - failed_next_hop
+    assert rib.destinations.get(default_prefix).get_next_hops == default_next_hops - failed_next_hop
     assert rib.fib.routes[default_prefix] == default_next_hops - failed_next_hop
     # test for 10.0.0.0/16
     assert rib.destinations.get(first_negative_disagg_prefix)._positive_next_hops == set()
     assert rib.destinations.get(first_negative_disagg_prefix)._negative_next_hops == \
            first_negative_disagg_next_hops
-    assert rib.destinations.get(first_negative_disagg_prefix).next_hops == \
+    assert rib.destinations.get(first_negative_disagg_prefix).get_next_hops == \
            default_next_hops - first_negative_disagg_next_hops - failed_next_hop
     assert rib.fib.routes[first_negative_disagg_prefix] == \
            default_next_hops - first_negative_disagg_next_hops - failed_next_hop
@@ -87,7 +87,7 @@ def test_remove_default_next_hop():
     assert rib.destinations.get(second_negative_disagg_prefix)._positive_next_hops == set()
     assert rib.destinations.get(second_negative_disagg_prefix)._negative_next_hops == \
            second_negative_disagg_next_hops
-    assert rib.destinations.get(second_negative_disagg_prefix).next_hops == \
+    assert rib.destinations.get(second_negative_disagg_prefix).get_next_hops == \
            default_next_hops - second_negative_disagg_next_hops - failed_next_hop
     assert rib.fib.routes[second_negative_disagg_prefix] == \
            default_next_hops - second_negative_disagg_next_hops - failed_next_hop
@@ -102,14 +102,14 @@ def test_add_subnet_disagg_to_first_negative_disagg():
     assert rib.destinations.get(first_negative_disagg_prefix)._positive_next_hops == set()
     assert rib.destinations.get(first_negative_disagg_prefix)._negative_next_hops == \
            first_negative_disagg_next_hops
-    assert rib.destinations.get(first_negative_disagg_prefix).next_hops == \
+    assert rib.destinations.get(first_negative_disagg_prefix).get_next_hops == \
            default_next_hops - first_negative_disagg_next_hops
     assert rib.fib.routes[first_negative_disagg_prefix] == \
            default_next_hops - first_negative_disagg_next_hops
     # test for disaggregated subnet
     assert rib.destinations.get(subnet_disagg_prefix)._positive_next_hops == set()
     assert rib.destinations.get(subnet_disagg_prefix)._negative_next_hops == subnet_disagg_next_hops
-    assert rib.destinations.get(subnet_disagg_prefix).next_hops == \
+    assert rib.destinations.get(subnet_disagg_prefix).get_next_hops == \
            default_next_hops - first_negative_disagg_next_hops - subnet_disagg_next_hops
     assert rib.fib.routes[subnet_disagg_prefix] == \
            default_next_hops - first_negative_disagg_next_hops - subnet_disagg_next_hops
@@ -127,13 +127,13 @@ def test_remove_default_next_hop_with_subnet_disagg():
     assert rib.destinations.get(
         default_prefix)._positive_next_hops == default_next_hops - failed_next_hop
     assert rib.destinations.get(default_prefix)._negative_next_hops == set()
-    assert rib.destinations.get(default_prefix).next_hops == default_next_hops - failed_next_hop
+    assert rib.destinations.get(default_prefix).get_next_hops == default_next_hops - failed_next_hop
     assert rib.fib.routes[default_prefix] == default_next_hops - failed_next_hop
     # test for 10.0.0.0/16
     assert rib.destinations.get(first_negative_disagg_prefix)._positive_next_hops == set()
     assert rib.destinations.get(first_negative_disagg_prefix)._negative_next_hops == \
            first_negative_disagg_next_hops
-    assert rib.destinations.get(first_negative_disagg_prefix).next_hops == \
+    assert rib.destinations.get(first_negative_disagg_prefix).get_next_hops == \
            default_next_hops - first_negative_disagg_next_hops - failed_next_hop
     assert rib.fib.routes[first_negative_disagg_prefix] == \
            default_next_hops - first_negative_disagg_next_hops - failed_next_hop
@@ -141,7 +141,7 @@ def test_remove_default_next_hop_with_subnet_disagg():
     assert rib.destinations.get(subnet_disagg_prefix)._positive_next_hops == set()
     assert rib.destinations.get(subnet_disagg_prefix)._negative_next_hops == \
            subnet_disagg_next_hops
-    assert rib.destinations.get(subnet_disagg_prefix).next_hops == \
+    assert rib.destinations.get(subnet_disagg_prefix).get_next_hops == \
            default_next_hops - first_negative_disagg_next_hops - subnet_disagg_next_hops - \
            failed_next_hop
     assert rib.fib.routes[subnet_disagg_prefix] == \
@@ -156,7 +156,7 @@ def test_neg_disagg_fib_unreachable():
     rib.add_route(unreachable_prefix, unreachable_next_hops, disagg_type=False)
     assert rib.destinations.get(unreachable_prefix)._positive_next_hops == set()
     assert rib.destinations.get(unreachable_prefix)._negative_next_hops == unreachable_next_hops
-    assert rib.destinations.get(unreachable_prefix).next_hops == set()
+    assert rib.destinations.get(unreachable_prefix).get_next_hops == set()
     assert rib.fib.routes[unreachable_prefix] == "unreachable"
 
 
@@ -170,7 +170,7 @@ def test_neg_disagg_fib_unreachable_recover():
     assert rib.destinations.get(unreachable_prefix)._positive_next_hops == set()
     assert rib.destinations.get(unreachable_prefix)._negative_next_hops == \
            unreachable_next_hops - recovered_nodes
-    assert rib.destinations.get(unreachable_prefix).next_hops == recovered_nodes
+    assert rib.destinations.get(unreachable_prefix).get_next_hops == recovered_nodes
     assert rib.fib.routes[unreachable_prefix] == recovered_nodes
 
 
@@ -185,7 +185,7 @@ def test_add_subnet_disagg_recursive_unreachable():
     assert rib.destinations.get(first_negative_disagg_prefix)._positive_next_hops == set()
     assert rib.destinations.get(
         first_negative_disagg_prefix)._negative_next_hops == default_next_hops
-    assert rib.destinations.get(first_negative_disagg_prefix).next_hops == set()
+    assert rib.destinations.get(first_negative_disagg_prefix).get_next_hops == set()
     assert rib.fib.routes[first_negative_disagg_prefix] == "unreachable"
     assert not rib.destinations.has_key(subnet_disagg_prefix)
     assert subnet_disagg_prefix not in rib.fib.routes
@@ -203,20 +203,20 @@ def test_recursive_recover():
     # test for default
     assert rib.destinations.get(default_prefix)._positive_next_hops == default_next_hops
     assert rib.destinations.get(default_prefix)._negative_next_hops == set()
-    assert rib.destinations.get(default_prefix).next_hops == default_next_hops
+    assert rib.destinations.get(default_prefix).get_next_hops == default_next_hops
     assert rib.fib.routes[default_prefix] == default_next_hops
     # test for 10.0.0.0/16
     assert rib.destinations.get(first_negative_disagg_prefix)._positive_next_hops == set()
     assert rib.destinations.get(first_negative_disagg_prefix)._negative_next_hops == \
            first_negative_disagg_next_hops
-    assert rib.destinations.get(first_negative_disagg_prefix).next_hops == \
+    assert rib.destinations.get(first_negative_disagg_prefix).get_next_hops == \
            default_next_hops - first_negative_disagg_next_hops
     assert rib.fib.routes[first_negative_disagg_prefix] == \
            default_next_hops - first_negative_disagg_next_hops
     # test for 10.0.10.0/24
     assert rib.destinations.get(subnet_disagg_prefix)._positive_next_hops == set()
     assert rib.destinations.get(subnet_disagg_prefix)._negative_next_hops == subnet_disagg_next_hops
-    assert rib.destinations.get(subnet_disagg_prefix).next_hops == default_next_hops - \
+    assert rib.destinations.get(subnet_disagg_prefix).get_next_hops == default_next_hops - \
            first_negative_disagg_next_hops - subnet_disagg_next_hops
     assert rib.fib.routes[subnet_disagg_prefix] == default_next_hops - \
            first_negative_disagg_next_hops - subnet_disagg_next_hops
@@ -230,7 +230,7 @@ def test_pos_neg_disagg():
     rib.add_route(leaf_prefix, leaf_prefix_negative_next_hops, disagg_type=False)
     assert rib.destinations.get(leaf_prefix)._positive_next_hops == leaf_prefix_positive_next_hops
     assert rib.destinations.get(leaf_prefix)._negative_next_hops == leaf_prefix_negative_next_hops
-    assert rib.destinations.get(leaf_prefix).next_hops == leaf_prefix_positive_next_hops
+    assert rib.destinations.get(leaf_prefix).get_next_hops == leaf_prefix_positive_next_hops
     assert rib.fib.routes[leaf_prefix] == leaf_prefix_positive_next_hops
 
 
@@ -247,6 +247,6 @@ def test_pos_neg_disagg_recursive():
            first_negative_disagg_next_hops
     assert rib.destinations.get(subnet_disagg_prefix)._negative_next_hops == \
            subnet_disagg_next_hops
-    assert rib.destinations.get(subnet_disagg_prefix).next_hops == \
+    assert rib.destinations.get(subnet_disagg_prefix).get_next_hops == \
            default_next_hops - subnet_disagg_next_hops
     assert rib.fib.routes[subnet_disagg_prefix] == default_next_hops - subnet_disagg_next_hops
