@@ -50,16 +50,17 @@ class Destination:
         # Update the Route Destination object instance with the current object
         new_route.destination = self
 
-    def del_route(self, owner, fib):
-        # index = 0
-        # for rte in self.routes:
-        #     if rte.owner == owner:
-        #         del self.routes[index]
-        #         self.update_fib(fib)
-        #         return True
-        #     index += 1
-        # return False
-        pass
+    def del_route(self, owner):
+        index = 0
+        best_changed = False
+        for rte in self.routes:
+            if rte.owner == owner:
+                del self.routes[index]
+                if index == 0:
+                    best_changed = True
+                return True, best_changed
+            index += 1
+        return False, best_changed
 
     def __repr__(self):
         parent_prefix = "(Parent: " + self.parent_prefix_dest.prefix + ")" if self.parent_prefix_dest else ""

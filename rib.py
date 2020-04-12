@@ -26,18 +26,20 @@ class Rib:
             prefix_dest = self.destinations.get(route.prefix)
         # Insert desired route in destination object
         prefix_dest.put_route(route)
-        self.fib.put_route(prefix_dest.best_route)
+
         # This condition is triggered only if all the next hops are added as negative next hops!
-        # if not prefix_dest.best_route.next_hops:
-        #     # Assert that there are no positive next hops for the prefix
-        #     assert not prefix_dest.best_route.positive_next_hops
-        #     # Since the given prefix is unreachable, remove superfluous children routes of the
-        #     # prefix from the RIB and the FIB
-        #     for child_prefix in self.destinations.children(prefix_dest.prefix):
-        #         self.destinations.delete(child_prefix)
-        #         self.fib.delete_route(child_prefix)
-        #     # We must not update the FIB for the children of this prefix, so return
-        #     return
+        if not route.positive_next_hops and route.negative_next_hops:
+            if not prefix_dest.best_route.next_hops:
+                # Assert that there are no positive next hops for the prefix
+                assert not prefix_dest.best_route.positive_next_hops
+                # Since the given prefix is unreachable, remove superfluous children routes of the
+                # prefix from the RIB and the FIB
+                for child_prefix in self.destinations.children(prefix_dest.prefix):
+                    self.destinations.delete(child_prefix)
+                    self.fib.delete_route(child_prefix)
+
+        self.fib.put_route(prefix_dest.best_route)
+
         # Force recomputing of children next hops since they need to add new next hops in their
         # sets. After recomputing, reassign the child computed next hops to the FIB.
         # N.B.: self.destinations.get(child_prefix) contains all the children at each level of the current prefix, so
@@ -46,20 +48,39 @@ class Rib:
             child_prefix_dest = self.destinations.get(child_prefix)
             self.fib.put_route(child_prefix_dest.best_route)
 
-    def delete_route(self, prefix, next_hops, disagg_type=True):
-        """
-        Removes a set of next hops for a given prefix.
-        :param prefix: IP prefix for which we want to remove next hops
-        :param next_hops: set of next hops we want to remove for the given prefix
-        :param disagg_type: True if positive disaggregation, False if negative disaggregation
-        :return:
-        """
-        # Get the Destination object associated to the given prefix
-        prefix_dest = self.destinations.get(prefix)
-        if disagg_type:
-            self._delete_pos_disagg(prefix_dest, next_hops)
+    def del_route(self, prefix, owner):
+        # Returns True if the route was present in the table and False if not.
+        if prefix in self.destinations:
+            destination = self.destinations[prefix]
+            deleted, best_changed = destination.del_route(owner)
+            if not destination.routes:
+                del self.destinations[prefix]
+                self.fib.delete_route(prefix)
+            elif best_changed:
+                self.fib.put_route(destination.best_route)
         else:
-            self._delete_neg_disagg(prefix_dest, next_hops)
+            deleted = False
+        # if deleted:
+        #     for child_prefix in self.destinations.children(prefix):
+        #         child_destination = self.destinations[child_prefix]
+        #         child_deleted, child_best_changed = child_destination.del_route(owner)
+
+        return deleted
+
+    # def delete_route(self, prefix, next_hops, disagg_type=True):
+    #     """
+    #     Removes a set of next hops for a given prefix.
+    #     :param prefix: IP prefix for which we want to remove next hops
+    #     :param next_hops: set of next hops we want to remove for the given prefix
+    #     :param disagg_type: True if positive disaggregation, False if negative disaggregation
+    #     :return:
+    #     """
+    #     # Get the Destination object associated to the given prefix
+    #     prefix_dest = self.destinations.get(prefix)
+    #     if disagg_type:
+    #         self._delete_pos_disagg(prefix_dest, next_hops)
+    #     else:
+    #         self._delete_neg_disagg(prefix_dest, next_hops)
 
     def _delete_pos_disagg(self, prefix_dest, next_hops):
         """
