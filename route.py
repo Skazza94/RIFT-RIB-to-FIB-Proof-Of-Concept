@@ -19,7 +19,11 @@ class Route:
         self.positive_next_hops = set()
         self.negative_next_hops = set()
 
-    def get_next_hops(self):
+    @property
+    def next_hops(self):
+        """
+        :return: the computed next hops for the Route ready to be installed in the FIB.
+        """
         return self._compute_next_hops()
 
     def add_next_hops(self, next_hops):
@@ -110,7 +114,7 @@ class Route:
 
         # Computes the next hops as the difference between the computed parent next hops and
         # the negative next hops.
-        return parent_prefix_dest.next_hops - self.negative_next_hops
+        return parent_prefix_dest.best_route.next_hops - self.negative_next_hops
 
     def __str__(self):
         owner = "N_SPF" if self.owner == 1 else "S_SPF"

@@ -24,76 +24,27 @@ class Rib:
             self.destinations.insert(route.prefix, prefix_dest)
         else:
             prefix_dest = self.destinations.get(route.prefix)
-
-        different = prefix_dest.put_route(route)
-
+        # Insert desired route in destination object
+        prefix_dest.put_route(route)
+        self.fib.put_route(prefix_dest.best_route)
         # This condition is triggered only if all the next hops are added as negative next hops!
-        if not prefix_dest.next_hops:
-            assert not new_route.positive_next_hops
-            # If the given prefix has no more next hops, flag it as unreachable in the FIB
-            # self.fib.routes[prefix] = "unreachable"
-            # Since the given prefix is unreachable, remove superfluous children routes of the
-            # prefix from the RIB and the FIB
-            for child_prefix in self.destinations.children(prefix_dest.prefix):
-                del self.destinations[child_prefix]
-                # del self.fib.routes[child_prefix]
-            # We must not update the FIB for this prefix, so return
-            return
+        # if not prefix_dest.best_route.next_hops:
+        #     # Assert that there are no positive next hops for the prefix
+        #     assert not prefix_dest.best_route.positive_next_hops
+        #     # Since the given prefix is unreachable, remove superfluous children routes of the
+        #     # prefix from the RIB and the FIB
+        #     for child_prefix in self.destinations.children(prefix_dest.prefix):
+        #         self.destinations.delete(child_prefix)
+        #         self.fib.delete_route(child_prefix)
+        #     # We must not update the FIB for the children of this prefix, so return
+        #     return
         # Force recomputing of children next hops since they need to add new next hops in their
         # sets. After recomputing, reassign the child computed next hops to the FIB.
         # N.B.: self.destinations.get(child_prefix) contains all the children at each level of the current prefix, so
         # recursion is not needed
         for child_prefix in self.destinations.children(prefix_dest.prefix):
-            pass
-            # self.fib.routes[child_prefix] = child_prefix_dest.next_hops
-
-        if :
-            # self.fib.update()
-            pass
-
-    def add_route(self, prefix, next_hops, disagg_type=True):
-        """
-        Adds a set of next hops for a given prefix.
-        :param prefix: IP prefix for which we want to add next hops
-        :param next_hops: set of next hops we want to add for the given prefix
-        :param disagg_type: True if positive disaggregation, False if negative disaggregation
-        :return:
-        """
-        # If there is no Destination object for the prefix, create a new Destination object
-        # for the given prefix and insert it in the Trie
-        if not self.destinations.has_key(prefix):
-            self.destinations.insert(prefix, Route(self, prefix))
-        # Get the Destination object associated to the given prefix
-        prefix_dest = self.destinations.get(prefix)
-        if disagg_type:
-            # If it is a positive disaggregation
-            # Add the next hops in the positive ones for the prefix
-            prefix_dest._add_positive_next_hops(next_hops)
-        else:
-            # If it is a negative disaggregation
-            # Add the next hops in the negative ones for the prefix
-            prefix_dest._add_negative_next_hops(next_hops)
-
-            if not prefix_dest.get_next_hops:
-                # If the given prefix has no more next hops, flag it as unreachable in the FIB
-                self.fib.routes[prefix] = "unreachable"
-                # Since the given prefix is unreachable, remove superfluous children routes of the
-                # prefix from the RIB and the FIB
-                for child_prefix in self.destinations.children(prefix):
-                    del self.destinations[child_prefix]
-                    del self.fib.routes[child_prefix]
-                # We must not update the FIB for this prefix, so return
-                return
-        # Force recomputing of children next hops since they need to add new next hops in their
-        # sets. After recomputing, reassign the child computed next hops to the FIB.
-        # N.B.: self.destinations.get(child_prefix) contains all the children at each level of the current prefix, so
-        # recursion is not needed
-        for child_prefix in self.destinations.children(prefix):
             child_prefix_dest = self.destinations.get(child_prefix)
-            child_prefix_dest.refresh()
-            self.fib.routes[child_prefix] = child_prefix_dest.get_next_hops
-        # Assign the computed next hops for the given prefix in the FIB
-        self.fib.routes[prefix] = prefix_dest.get_next_hops
+            self.fib.put_route(child_prefix_dest.best_route)
 
     def delete_route(self, prefix, next_hops, disagg_type=True):
         """

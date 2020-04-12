@@ -11,6 +11,9 @@ class Destination:
 
     @property
     def parent_prefix_dest(self):
+        """
+        :return: the Destination object associated to the parent prefix of the current one
+        """
         parent_prefix = self.rib.destinations.parent(self.prefix)
         if parent_prefix is None:
             return None
@@ -18,12 +21,11 @@ class Destination:
         return self.rib.destinations.get(parent_prefix)
 
     @property
-    def next_hops(self):
+    def best_route(self):
         """
-        :return: the computed next hops for the best Route ready to be installed in the FIB.
+        :return: the best Route for this prefix if present
         """
-        best_route = self.routes[0]
-        return best_route.get_next_hops()
+        return self.routes[0]
 
     def get_route(self, owner):
         for rte in self.routes:
@@ -33,25 +35,20 @@ class Destination:
 
     def put_route(self, new_route):
         assert self.prefix == new_route.prefix
-        inserted = False
-        different = False
+        added = False
         for index, existing_route in enumerate(self.routes):
             if existing_route.owner == new_route.owner:
                 self.routes[index] = new_route
-                inserted = True
-                different = self.routes_significantly_different(existing_route, new_route)
+                added = True
                 break
             elif existing_route.owner < new_route.owner:
                 self.routes.insert(index, new_route)
-                inserted = True
-                different = True
+                added = True
                 break
-        if not inserted:
+        if not added:
             self.routes.append(new_route)
-            different = True
-        # Update the route Destination object instance with the current object
+        # Update the Route Destination object instance with the current object
         new_route.destination = self
-        return different
 
     def del_route(self, owner, fib):
         # index = 0
@@ -66,12 +63,11 @@ class Destination:
 
     def __repr__(self):
         parent_prefix = "(Parent: " + self.parent_prefix_dest.prefix + ")" if self.parent_prefix_dest else ""
-        return "%s\n%s %s\nBest Computed: %s\n\n" % (self.prefix, parent_prefix, str(self.routes), str(self.next_hops))
+        return "%s\n%s %s\nBest Computed: %s\n\n" % (self.prefix, parent_prefix, str(self.routes),
+                                                     str(self.best_route.next_hops))
 
     @staticmethod
     def routes_significantly_different(route1, route2):
         assert route1.prefix == route2.prefix
         if route1.owner != route2.owner:
             return True
-
-        return False
