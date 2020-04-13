@@ -64,9 +64,9 @@ class Destination:
             index += 1
         if not added:
             self.routes.append(new_route)
-        # Update the Route Destination object instance with the current object
         if index == 0:
             best_changed = True
+        # Update the Route Destination object instance with the current object
         new_route.destination = self
         return best_changed
 
