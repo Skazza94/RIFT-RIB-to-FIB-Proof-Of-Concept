@@ -50,7 +50,9 @@ class Destination:
         """
         assert self.prefix == new_route.prefix
         added = False
-        for index, existing_route in enumerate(self.routes):
+        best_changed = False
+        index = 0
+        for existing_route in self.routes:
             if existing_route.owner == new_route.owner:
                 self.routes[index] = new_route
                 added = True
@@ -59,10 +61,14 @@ class Destination:
                 self.routes.insert(index, new_route)
                 added = True
                 break
+            index += 1
         if not added:
             self.routes.append(new_route)
         # Update the Route Destination object instance with the current object
+        if index == 0:
+            best_changed = True
         new_route.destination = self
+        return best_changed
 
     def del_route(self, owner):
         """

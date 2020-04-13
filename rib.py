@@ -30,11 +30,10 @@ class Rib:
         else:
             prefix_destination = self.destinations.get(route.prefix)
         # Insert desired route in destination object
-        prefix_destination.put_route(route)
+        best_changed = prefix_destination.put_route(route)
         # Get children prefixes before performing actions on the prefix (it can be deleted from the Trie)
         children_prefixes = self.destinations.children(prefix_destination.prefix)
         # Update prefix in the fib
-        self.fib.put_route(prefix_destination.best_route)
 
         # TODO: ask if this case can occur
         # update_fib = True
@@ -47,9 +46,11 @@ class Rib:
         # if update_fib:
 
         # Try to delete superfluous children
-        if not self._delete_superfluous_children(prefix_destination, children_prefixes):
-            # If children have not been deleted, update them
-            self._update_prefix_children(children_prefixes)
+        if best_changed:
+            self.fib.put_route(prefix_destination.best_route)
+            if not self._delete_superfluous_children(prefix_destination, children_prefixes):
+                # If children have not been deleted, update them
+                self._update_prefix_children(children_prefixes)
 
     def del_route(self, prefix, owner):
         """
