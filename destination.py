@@ -1,12 +1,16 @@
 class Destination:
-    # For each prefix, there can be up to one route per owner. This is also the order of preference
-    # for the routes from different owners to the same destination (higher numerical value is more
-    # preferred)
+    """
+    Class that contains all routes for a given prefix destination
+    Attributes of this class are:
+        - rib: reference to the RIB
+        - prefix: prefix associated to this destination
+        - routes: list of Route objects, in decreasing order or owner (= in decreasing order of preference, higher
+                  numerical value is more preferred). For a given owner, at most one route is allowed to be in the list
+    """
+
     def __init__(self, rib, prefix):
         self.rib = rib
         self.prefix = prefix
-        # List of Route objects, in decreasing order or owner (= in decreasing order of preference)
-        # For a given owner, at most one route is allowed to be in the list
         self.routes = []
 
     @property
@@ -23,17 +27,27 @@ class Destination:
     @property
     def best_route(self):
         """
-        :return: the best Route for this prefix if present
+        :return: the best Route for this prefix
         """
         return self.routes[0]
 
     def get_route(self, owner):
+        """
+        Get Route object for a given owner if present
+        :param owner: (int) owner of the route
+        :return: (Route|None) desired Route object if present, else None
+        """
         for rte in self.routes:
             if rte.owner == owner:
                 return rte
         return None
 
     def put_route(self, new_route):
+        """
+        Add a new Route object in the list of routes for the current prefix. Route is added with proper priority.
+        :param new_route: (Route) route to add to the list
+        :return:
+        """
         assert self.prefix == new_route.prefix
         added = False
         for index, existing_route in enumerate(self.routes):
@@ -51,15 +65,19 @@ class Destination:
         new_route.destination = self
 
     def del_route(self, owner):
-        index = 0
+        """
+        Delete a Route object for the given owner
+        :param owner: (int) owner of the route
+        :return: (tuple) first element is a boolean that indicates if the route has been deleted, second element is a
+                         boolean that indicates if the best route changed
+        """
         best_changed = False
-        for rte in self.routes:
+        for index, rte in enumerate(self.routes):
             if rte.owner == owner:
                 del self.routes[index]
                 if index == 0:
                     best_changed = True
                 return True, best_changed
-            index += 1
         return False, best_changed
 
     def __repr__(self):

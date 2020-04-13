@@ -5,9 +5,16 @@ DEST_TYPE_NEG_DISAGG_PREFIX = 4
 
 class Route:
     """
-    An object that represents a prefix destination in the RIB.
+    An object that represents a prefix route for a Destination.
     It keeps track of positive and negative next hops and it also computes the real next hops
-    to install in the FIB.
+    to install in the kernel.
+    Attributes of this class are:
+        - prefix: prefix associated to this route
+        - owner: owner of this route
+        - destination: Destination object which contains this route
+        - stale: boolean that marks the route as stale
+        - positive_next_hops: set of positive next hops for the prefix
+        - negative_next_hops: set of negative next hops for the prefix
     """
 
     def __init__(self, prefix, owner):
@@ -22,11 +29,17 @@ class Route:
     @property
     def next_hops(self):
         """
-        :return: the computed next hops for the Route ready to be installed in the FIB.
+        :return: the computed next hops for the Route ready to be installed in the kernel.
         """
         return self._compute_next_hops()
 
     def add_next_hops(self, next_hops):
+        """
+        Add given next hops to current sets of next hops. List of next hops contains tuples where
+        the first element is the next hops and the second element is the type of next hop (positive/negative)
+        :param next_hops: (list) next hops to add to current sets
+        :return:
+        """
         for next_hop, next_hop_type in next_hops:
             if next_hop_type == DEST_TYPE_PREFIX or next_hop_type == DEST_TYPE_POS_DISAGG_PREFIX:
                 self._add_positive_next_hop(next_hop)
@@ -97,7 +110,7 @@ class Route:
         """
         Computes the the real next hops set for this prefix.
         Real next hops set is the set of next hops that can be used to reach this prefix. (the ones
-        to be installed in the FIB)
+        to be installed in the kernel)
         :return: the set of real next hops
         """
         # If there are positive next hops, these are preferred.

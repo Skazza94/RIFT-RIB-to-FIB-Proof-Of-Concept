@@ -1,6 +1,6 @@
 class Kernel:
     """
-    A simple object representing the kernel routing table.
+    A simple class representing the kernel routing table.
     """
 
     def __init__(self):
