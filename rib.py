@@ -18,8 +18,8 @@ class Rib:
 
     def put_route(self, route):
         """
-        Add a Route object to the Destination object associated to the prefix.
-        :param route: (Route) the object to add to the Destination associated to the prefix
+        Add a RibRoute object to the Destination object associated to the prefix.
+        :param route: (RibRoute) the object to add to the Destination associated to the prefix
         :return:
         """
         # If there is no Destination object for the prefix, create a new Destination object
@@ -55,8 +55,8 @@ class Rib:
 
     def del_route(self, prefix, owner):
         """
-        Delete given prefix and owner Route object.
-        If no more Route objects are available, also delete Destination from trie and from the FIB.
+        Delete given prefix and owner RibRoute object.
+        If no more RibRoute objects are available, also delete Destination from trie and from the FIB.
         :param prefix: (string) prefix to delete
         :param owner: (int) owner of the prefix
         :return: (boolean) if the route has been deleted or not
@@ -115,11 +115,11 @@ class Rib:
 
         return False
 
-    def get_rib_fib_representation(self):
-        print("--------------------- RIB ---------------------------")
-        for prefix in self.destinations.keys():
-            print(self.destinations.get(prefix))
-        print("--------------------- FIB ---------------------------")
-        for prefix, dests in self.fib.routes.items():
-            print(prefix, "\t", dests)
-        print("-----------------------------------------------------")
+    def __str__(self):
+        rep_str = ""
+        for prefix in self.destinations:
+            rep_str += str(self.destinations.get(prefix))
+        return "%s\n\n%s" % (rep_str, str(self.fib))
+
+    def __repr__(self):
+        return str(self)

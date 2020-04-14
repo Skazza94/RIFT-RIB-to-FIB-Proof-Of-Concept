@@ -1,11 +1,6 @@
-DEST_TYPE_PREFIX = 2
-DEST_TYPE_POS_DISAGG_PREFIX = 3
-DEST_TYPE_NEG_DISAGG_PREFIX = 4
-
-
-class Route:
+class RibRoute:
     """
-    An object that represents a prefix route for a Destination.
+    An object that represents a prefix route for a Destination in the RIB.
     It keeps track of positive and negative next hops and it also computes the real next hops
     to install in the kernel.
     Attributes of this class are:
@@ -29,7 +24,7 @@ class Route:
     @property
     def next_hops(self):
         """
-        :return: the computed next hops for the Route ready to be installed in the kernel.
+        :return: the computed next hops for the route ready to be installed in the kernel.
         """
         return self._compute_next_hops()
 
@@ -40,7 +35,7 @@ class Route:
         to be installed in the kernel)
         :return: the set of real next hops
         """
-        # The route does not have any negative nexthops; there is no disaggregation to be done.
+        # The route does not have any negative next hops; there is no disaggregation to be done.
         if not self.negative_next_hops:
             return self.positive_next_hops
 
@@ -51,18 +46,20 @@ class Route:
         if parent_prefix_dest is None:
             return self.positive_next_hops
 
-        # Compute the complementary nexthops of the negative nexthops.
+        # Compute the complementary next hops of the negative next hops.
         complementary_next_hops = parent_prefix_dest.best_route.next_hops - self.negative_next_hops
         return self.positive_next_hops.union(complementary_next_hops)
 
     def __str__(self):
+        all_next_hops = []
+        for positive_next_hop in self.positive_next_hops:
+            all_next_hops.append((positive_next_hop, True))
+        for negative_next_hop in self.negative_next_hops:
+            all_next_hops.append((negative_next_hop, False))
+        all_next_hops.sort()
         owner = "N_SPF" if self.owner == 1 else "S_SPF"
-        return "\n\tOwner: %s\n\tPositive: %s\n\tNegative: %s\n" % (owner,
-                                                                    str(self.positive_next_hops),
-                                                                    str(self.negative_next_hops))
+        return "%s: %s -> %s" % (owner, self.prefix,
+                                 ", ".join(map(lambda x: x[0] if x[1] else "~%s" % x[0], all_next_hops)))
 
     def __repr__(self):
-        owner = "N_SPF" if self.owner == 1 else "S_SPF"
-        return "\n\tOwner: %s\n\tPositive: %s\n\tNegative: %s\n" % (owner,
-                                                                    str(self.positive_next_hops),
-                                                                    str(self.negative_next_hops))
+        return str(self)

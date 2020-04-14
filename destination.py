@@ -4,7 +4,7 @@ class Destination:
     Attributes of this class are:
         - rib: reference to the RIB
         - prefix: prefix associated to this destination
-        - routes: list of Route objects, in decreasing order or owner (= in decreasing order of preference, higher
+        - routes: list of RibRoute objects, in decreasing order or owner (= in decreasing order of preference, higher
                   numerical value is more preferred). For a given owner, at most one route is allowed to be in the list
     """
 
@@ -27,15 +27,15 @@ class Destination:
     @property
     def best_route(self):
         """
-        :return: the best Route for this prefix
+        :return: the best RibRoute for this prefix
         """
         return self.routes[0]
 
     def get_route(self, owner):
         """
-        Get Route object for a given owner if present
+        Get RibRoute object for a given owner if present
         :param owner: (int) owner of the route
-        :return: (Route|None) desired Route object if present, else None
+        :return: (RibRoute|None) desired RibRoute object if present, else None
         """
         for rte in self.routes:
             if rte.owner == owner:
@@ -44,8 +44,8 @@ class Destination:
 
     def put_route(self, new_route):
         """
-        Add a new Route object in the list of routes for the current prefix. Route is added with proper priority.
-        :param new_route: (Route) route to add to the list
+        Add a new RibRoute object in the list of routes for the current prefix. Route is added with proper priority.
+        :param new_route: (RibRoute) route to add to the list
         :return:
         """
         assert self.prefix == new_route.prefix
@@ -72,7 +72,7 @@ class Destination:
 
     def del_route(self, owner):
         """
-        Delete a Route object for the given owner
+        Delete a RibRoute object for the given owner
         :param owner: (int) owner of the route
         :return: (tuple) first element is a boolean that indicates if the route has been deleted, second element is a
                          boolean that indicates if the best route changed
