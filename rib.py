@@ -119,7 +119,7 @@ class Rib:
         rep_str = ""
         for prefix in self.destinations:
             rep_str += str(self.destinations.get(prefix))
-        return "%s\n\n%s" % (rep_str, str(self.fib))
+        return "RIB:\n%s\n\nFIB:\n%s" % (rep_str, str(self.fib))
 
     def __repr__(self):
         return str(self)
