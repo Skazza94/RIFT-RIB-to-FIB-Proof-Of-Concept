@@ -31,6 +31,7 @@ class Rib:
             prefix_destination = self.destinations.get(route.prefix)
         # Insert desired route in destination object
         best_changed = prefix_destination.put_route(route)
+
         # Get children prefixes before performing actions on the prefix (it can be deleted from the Trie)
         children_prefixes = self.destinations.children(prefix_destination.prefix)
 
@@ -107,7 +108,8 @@ class Rib:
         :return: (boolean) if children of the given prefix have been removed or not
         """
         best_route = prefix_dest.best_route
-        if (not best_route.positive_next_hops and best_route.negative_next_hops) and not best_route.next_hops:
+        if (not best_route.positive_next_hops and best_route.negative_next_hops) and not best_route.next_hops \
+                and prefix_dest.parent_prefix_dest:
             for child_prefix in children_prefixes:
                 self.destinations.delete(child_prefix)
                 self.fib.delete_route(child_prefix)

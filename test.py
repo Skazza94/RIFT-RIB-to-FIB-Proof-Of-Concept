@@ -424,3 +424,318 @@ def test_remove_superfluous_subnet_recursive():
     assert rib.fib.routes[subnet_disagg_prefix].next_hops == subnet_disagg_route.next_hops
     assert rib.fib.kernel.routes[subnet_disagg_prefix] == subnet_disagg_route.next_hops
     assert rib.destinations.get(subnet_disagg_prefix).parent_prefix_dest == rib.destinations.get(default_prefix)
+
+
+def test_prop_deep_nesting():
+    # Deep nesting of more specific routes: parent, child, grand child, grand-grand child, ...
+    rib = Rib()
+    # Default route
+    new_default_next_hops = ['S1', 'S2', 'S3', 'S4', 'S5']
+    new_default_route = RibRoute(default_prefix, S_SPF, new_default_next_hops)
+    rib.put_route(new_default_route)
+    # Child route
+    child_prefix = '1.0.0.0/8'
+    child_route = RibRoute(child_prefix, S_SPF, [], ['S1'])
+    rib.put_route(child_route)
+    # Grand child route
+    g_child_prefix = '1.128.0.0/9'
+    g_child_route = RibRoute(g_child_prefix, S_SPF, [], ['S2'])
+    rib.put_route(g_child_route)
+    # Grand-grand child route
+    gg_child_prefix = '1.192.0.0/10'
+    gg_child_route = RibRoute(gg_child_prefix, S_SPF, [], ['S3'])
+    rib.put_route(gg_child_route)
+    # Grand-grand-grand child route
+    ggg_child_prefix = '1.224.0.0/11'
+    ggg_child_route = RibRoute(ggg_child_prefix, S_SPF, [], ['S4'])
+    rib.put_route(ggg_child_route)
+    # Grand-grand-grand-grand child route
+    gggg_child_prefix = '1.240.0.0/12'
+    gggg_child_route = RibRoute(gggg_child_prefix, S_SPF, [], ['S5'])
+    rib.put_route(gggg_child_route)
+
+    # Default route asserts
+    assert rib.destinations.get(default_prefix).best_route == new_default_route
+    assert rib.destinations.get(default_prefix).best_route.next_hops == {'S1', 'S2', 'S3', 'S4', 'S5'}
+    assert rib.fib.routes[default_prefix].next_hops == new_default_route.next_hops
+    assert rib.fib.kernel.routes[default_prefix] == new_default_route.next_hops
+    # Child route asserts
+    assert rib.destinations.get(child_prefix).best_route == child_route
+    assert rib.destinations.get(child_prefix).best_route.next_hops == {'S2', 'S3', 'S4', 'S5'}
+    assert rib.fib.routes[child_prefix].next_hops == child_route.next_hops
+    assert rib.fib.kernel.routes[child_prefix] == child_route.next_hops
+    # Grand-child route asserts
+    assert rib.destinations.get(g_child_prefix).best_route == g_child_route
+    assert rib.destinations.get(g_child_prefix).best_route.next_hops == {'S3', 'S4', 'S5'}
+    assert rib.fib.routes[g_child_prefix].next_hops == g_child_route.next_hops
+    assert rib.fib.kernel.routes[g_child_prefix] == g_child_route.next_hops
+    # Grand-grand child route asserts
+    assert rib.destinations.get(gg_child_prefix).best_route == gg_child_route
+    assert rib.destinations.get(gg_child_prefix).best_route.next_hops == {'S4', 'S5'}
+    assert rib.fib.routes[gg_child_prefix].next_hops == gg_child_route.next_hops
+    assert rib.fib.kernel.routes[gg_child_prefix] == gg_child_route.next_hops
+    # Grand-grand-grand child route asserts
+    assert rib.destinations.get(ggg_child_prefix).best_route == ggg_child_route
+    assert rib.destinations.get(ggg_child_prefix).best_route.next_hops == {'S5'}
+    assert rib.fib.routes[ggg_child_prefix].next_hops == ggg_child_route.next_hops
+    assert rib.fib.kernel.routes[ggg_child_prefix] == ggg_child_route.next_hops
+    # Grand-grand-grand-grand child route asserts
+    assert rib.destinations.get(gggg_child_prefix).best_route == gggg_child_route
+    assert rib.destinations.get(gggg_child_prefix).best_route.next_hops == set()
+    assert rib.fib.routes[gggg_child_prefix].next_hops == gggg_child_route.next_hops
+    assert rib.fib.kernel.routes[gggg_child_prefix] == 'unreachable'
+
+    # Delete S3 from default route
+    new_default_route = RibRoute(default_prefix, S_SPF, ['S1', 'S2', 'S4', 'S5'])
+    rib.put_route(new_default_route)
+
+    # Default route asserts
+    assert rib.destinations.get(default_prefix).best_route == new_default_route
+    assert rib.destinations.get(default_prefix).best_route.next_hops == {'S1', 'S2', 'S4', 'S5'}
+    assert rib.fib.routes[default_prefix].next_hops == new_default_route.next_hops
+    assert rib.fib.kernel.routes[default_prefix] == new_default_route.next_hops
+    # Child route asserts
+    assert rib.destinations.get(child_prefix).best_route == child_route
+    assert rib.destinations.get(child_prefix).best_route.next_hops == {'S2', 'S4', 'S5'}
+    assert rib.fib.routes[child_prefix].next_hops == child_route.next_hops
+    assert rib.fib.kernel.routes[child_prefix] == child_route.next_hops
+    # Grand-child route asserts
+    assert rib.destinations.get(g_child_prefix).best_route == g_child_route
+    assert rib.destinations.get(g_child_prefix).best_route.next_hops == {'S4', 'S5'}
+    assert rib.fib.routes[g_child_prefix].next_hops == g_child_route.next_hops
+    assert rib.fib.kernel.routes[g_child_prefix] == g_child_route.next_hops
+    # Grand-grand child route asserts
+    assert rib.destinations.get(gg_child_prefix).best_route == gg_child_route
+    assert rib.destinations.get(gg_child_prefix).best_route.next_hops == {'S4', 'S5'}
+    assert rib.fib.routes[gg_child_prefix].next_hops == gg_child_route.next_hops
+    assert rib.fib.kernel.routes[gg_child_prefix] == gg_child_route.next_hops
+    # Grand-grand-grand child route asserts
+    assert rib.destinations.get(ggg_child_prefix).best_route == ggg_child_route
+    assert rib.destinations.get(ggg_child_prefix).best_route.next_hops == {'S5'}
+    assert rib.fib.routes[ggg_child_prefix].next_hops == ggg_child_route.next_hops
+    assert rib.fib.kernel.routes[ggg_child_prefix] == ggg_child_route.next_hops
+    # Grand-grand-grand-grand child route asserts
+    assert rib.destinations.get(gggg_child_prefix).best_route == gggg_child_route
+    assert rib.destinations.get(gggg_child_prefix).best_route.next_hops == set()
+    assert rib.fib.routes[gggg_child_prefix].next_hops == gggg_child_route.next_hops
+    assert rib.fib.kernel.routes[gggg_child_prefix] == 'unreachable'
+
+    rib.del_route(default_prefix, S_SPF)
+    # Default route asserts
+    assert not rib.destinations.has_key(default_prefix)
+    # Child route asserts
+    assert rib.destinations.get(child_prefix).best_route == child_route
+    assert rib.destinations.get(child_prefix).best_route.next_hops == set()
+    assert rib.fib.routes[child_prefix].next_hops == set()
+    assert rib.fib.kernel.routes[child_prefix] == 'unreachable'
+    # Grand-child route asserts
+    assert rib.destinations.get(g_child_prefix).best_route == g_child_route
+    assert rib.destinations.get(g_child_prefix).best_route.next_hops == set()
+    assert rib.fib.routes[g_child_prefix].next_hops == set()
+    assert rib.fib.kernel.routes[g_child_prefix] == 'unreachable'
+    # Grand-grand child route asserts
+    assert rib.destinations.get(gg_child_prefix).best_route == gg_child_route
+    assert rib.destinations.get(gg_child_prefix).best_route.next_hops == set()
+    assert rib.fib.routes[gg_child_prefix].next_hops ==  set()
+    assert rib.fib.kernel.routes[gg_child_prefix] == 'unreachable'
+    # Grand-grand-grand child route asserts
+    assert rib.destinations.get(ggg_child_prefix).best_route == ggg_child_route
+    assert rib.destinations.get(ggg_child_prefix).best_route.next_hops == set()
+    assert rib.fib.routes[ggg_child_prefix].next_hops == set()
+    assert rib.fib.kernel.routes[ggg_child_prefix] == 'unreachable'
+    # Grand-grand-grand-grand child route asserts
+    assert rib.destinations.get(gggg_child_prefix).best_route == gggg_child_route
+    assert rib.destinations.get(gggg_child_prefix).best_route.next_hops == set()
+    assert rib.fib.routes[gggg_child_prefix].next_hops == set()
+    assert rib.fib.kernel.routes[gggg_child_prefix] == 'unreachable'
+
+    rib.del_route(child_prefix, S_SPF)
+    # Child route asserts
+    assert not rib.destinations.has_key(child_prefix)
+    # Grand-child route asserts
+    assert rib.destinations.get(g_child_prefix).best_route == g_child_route
+    assert rib.destinations.get(g_child_prefix).best_route.next_hops == set()
+    assert rib.fib.routes[g_child_prefix].next_hops == set()
+    assert rib.fib.kernel.routes[g_child_prefix] == 'unreachable'
+    # Grand-grand child route asserts
+    assert rib.destinations.get(gg_child_prefix).best_route == gg_child_route
+    assert rib.destinations.get(gg_child_prefix).best_route.next_hops == set()
+    assert rib.fib.routes[gg_child_prefix].next_hops ==  set()
+    assert rib.fib.kernel.routes[gg_child_prefix] == 'unreachable'
+    # Grand-grand-grand child route asserts
+    assert rib.destinations.get(ggg_child_prefix).best_route == ggg_child_route
+    assert rib.destinations.get(ggg_child_prefix).best_route.next_hops == set()
+    assert rib.fib.routes[ggg_child_prefix].next_hops == set()
+    assert rib.fib.kernel.routes[ggg_child_prefix] == 'unreachable'
+    # Grand-grand-grand-grand child route asserts
+    assert rib.destinations.get(gggg_child_prefix).best_route == gggg_child_route
+    assert rib.destinations.get(gggg_child_prefix).best_route.next_hops == set()
+    assert rib.fib.routes[gggg_child_prefix].next_hops == set()
+    assert rib.fib.kernel.routes[gggg_child_prefix] == 'unreachable'
+
+    rib.del_route(g_child_prefix, S_SPF)
+    # Grand-child route asserts
+    assert not rib.destinations.has_key(g_child_prefix)
+    # Grand-grand child route asserts
+    assert rib.destinations.get(gg_child_prefix).best_route == gg_child_route
+    assert rib.destinations.get(gg_child_prefix).best_route.next_hops == set()
+    assert rib.fib.routes[gg_child_prefix].next_hops ==  set()
+    assert rib.fib.kernel.routes[gg_child_prefix] == 'unreachable'
+    # Grand-grand-grand child route asserts
+    assert rib.destinations.get(ggg_child_prefix).best_route == ggg_child_route
+    assert rib.destinations.get(ggg_child_prefix).best_route.next_hops == set()
+    assert rib.fib.routes[ggg_child_prefix].next_hops == set()
+    assert rib.fib.kernel.routes[ggg_child_prefix] == 'unreachable'
+    # Grand-grand-grand-grand child route asserts
+    assert rib.destinations.get(gggg_child_prefix).best_route == gggg_child_route
+    assert rib.destinations.get(gggg_child_prefix).best_route.next_hops == set()
+    assert rib.fib.routes[gggg_child_prefix].next_hops == set()
+    assert rib.fib.kernel.routes[gggg_child_prefix] == 'unreachable'
+
+    rib.del_route(gg_child_prefix, S_SPF)
+    # Grand-child route asserts
+    assert not rib.destinations.has_key(gg_child_prefix)
+    # Grand-grand-grand child route asserts
+    assert rib.destinations.get(ggg_child_prefix).best_route == ggg_child_route
+    assert rib.destinations.get(ggg_child_prefix).best_route.next_hops == set()
+    assert rib.fib.routes[ggg_child_prefix].next_hops == set()
+    assert rib.fib.kernel.routes[ggg_child_prefix] == 'unreachable'
+    # Grand-grand-grand-grand child route asserts
+    assert rib.destinations.get(gggg_child_prefix).best_route == gggg_child_route
+    assert rib.destinations.get(gggg_child_prefix).best_route.next_hops == set()
+    assert rib.fib.routes[gggg_child_prefix].next_hops == set()
+    assert rib.fib.kernel.routes[gggg_child_prefix] == 'unreachable'
+
+    rib.del_route(ggg_child_prefix, S_SPF)
+    # Grand-child route asserts
+    assert not rib.destinations.has_key(ggg_child_prefix)
+    # Grand-grand-grand-grand child route asserts
+    assert rib.destinations.get(gggg_child_prefix).best_route == gggg_child_route
+    assert rib.destinations.get(gggg_child_prefix).best_route.next_hops == set()
+    assert rib.fib.routes[gggg_child_prefix].next_hops == set()
+    assert rib.fib.kernel.routes[gggg_child_prefix] == 'unreachable'
+
+    rib.del_route(gggg_child_prefix, S_SPF)
+    # Grand-grand-grand-grand child route asserts
+    assert not rib.destinations.has_key(gggg_child_prefix)
+
+    assert not rib.destinations.keys()
+    assert not rib.fib.routes.keys()
+    assert not rib.fib.kernel.routes.keys()
+
+def test_prop_nesting_with_siblings():
+
+    # Deep nesting of more specific routes using the following tree:
+    #
+    #   1.0.0.0/8 -> S1, S2, S3, S4, S5, S6, S7
+    #    |
+    #    +--- 1.1.0.0/16 -> ~S1
+    #    |     |
+    #    |     +--- 1.1.1.0/24 -> ~S2
+    #    |     |
+    #    |     +--- 1.1.2.0/24 -> ~S3
+    #    |
+    #    +--- 1.2.0.0/16 -> ~S4
+    #          |
+    #          +--- 1.2.1.0/24 -> ~S5
+    #          |
+    #          +--- 1.2.2.0/24 -> ~S6
+    #
+    # Note: we add the routes in a random order
+
+    rib = Rib()
+
+    rib.put_route(RibRoute("1.2.1.0/24", S_SPF, [], ["S5"]))
+    rib.put_route(RibRoute("1.1.2.0/24", S_SPF, [], ["S3"]))
+    rib.put_route(RibRoute("1.1.0.0/16", S_SPF, [], ['S1']))
+    rib.put_route(RibRoute("1.1.1.0/24", S_SPF, [], ['S2']))
+    rib.put_route(RibRoute("1.2.0.0/16", S_SPF, [], ['S4']))
+    rib.put_route(RibRoute("1.0.0.0/8", S_SPF, ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7']))
+    rib.put_route(RibRoute("1.2.2.0/24", S_SPF, [], ['S6']))
+
+    # Testing only rib, fib and kernel next hops
+    assert rib.destinations.get('1.0.0.0/8').best_route.next_hops == {'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7'}
+    assert rib.fib.routes['1.0.0.0/8'].next_hops == {'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7'}
+    assert rib.fib.kernel.routes['1.0.0.0/8'] == {'S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7'}
+
+    assert rib.destinations.get('1.1.0.0/16').best_route.negative_next_hops == {'S1'}
+    assert rib.destinations.get('1.1.0.0/16').best_route.next_hops == {'S2', 'S3', 'S4', 'S5', 'S6', 'S7'}
+    assert rib.fib.routes['1.1.0.0/16'].next_hops == {'S2', 'S3', 'S4', 'S5', 'S6', 'S7'}
+    assert rib.fib.kernel.routes['1.1.0.0/16'] == {'S2', 'S3', 'S4', 'S5', 'S6', 'S7'}
+
+    assert rib.destinations.get('1.1.1.0/24').best_route.negative_next_hops == {'S2'}
+    assert rib.destinations.get('1.1.1.0/24').best_route.next_hops == {'S3', 'S4', 'S5', 'S6', 'S7'}
+    assert rib.fib.routes['1.1.1.0/24'].next_hops == {'S3', 'S4', 'S5', 'S6', 'S7'}
+    assert rib.fib.kernel.routes['1.1.1.0/24'] == {'S3', 'S4', 'S5', 'S6', 'S7'}
+
+
+    assert rib.destinations.get('1.1.2.0/24').best_route.negative_next_hops == {'S3'}
+    assert rib.destinations.get('1.1.2.0/24').best_route.next_hops == {'S2', 'S4', 'S5', 'S6', 'S7'}
+    assert rib.fib.routes['1.1.2.0/24'].next_hops == {'S2', 'S4', 'S5', 'S6', 'S7'}
+    assert rib.fib.kernel.routes['1.1.2.0/24'] == {'S2', 'S4', 'S5', 'S6', 'S7'}
+
+    assert rib.destinations.get('1.2.0.0/16').best_route.negative_next_hops == {'S4'}
+    assert rib.destinations.get('1.2.0.0/16').best_route.next_hops == {'S1', 'S2', 'S3', 'S5', 'S6', 'S7'}
+    assert rib.fib.routes['1.2.0.0/16'].next_hops == {'S1', 'S2', 'S3', 'S5', 'S6', 'S7'}
+    assert rib.fib.kernel.routes['1.2.0.0/16'] == {'S1', 'S2', 'S3', 'S5', 'S6', 'S7'}
+
+    assert rib.destinations.get('1.2.1.0/24').best_route.negative_next_hops == {'S5'}
+    assert rib.destinations.get('1.2.1.0/24').best_route.next_hops == {'S1', 'S2', 'S3', 'S6', 'S7'}
+    assert rib.fib.routes['1.2.1.0/24'].next_hops == {'S1', 'S2', 'S3', 'S6', 'S7'}
+    assert rib.fib.kernel.routes['1.2.1.0/24'] == {'S1', 'S2', 'S3', 'S6', 'S7'}
+
+    assert rib.destinations.get('1.2.2.0/24').best_route.negative_next_hops == {'S6'}
+    assert rib.destinations.get('1.2.2.0/24').best_route.next_hops == {'S1', 'S2', 'S3', 'S5', 'S7'}
+    assert rib.fib.routes['1.2.2.0/24'].next_hops == {'S1', 'S2', 'S3', 'S5', 'S7'}
+    assert rib.fib.kernel.routes['1.2.2.0/24'] == {'S1', 'S2', 'S3', 'S5', 'S7'}
+
+    # Delete nexthop S3 from the parent route 0.0.0.0/0.
+    rib.put_route(RibRoute('1.0.0.0/8', S_SPF, ['S1', 'S2', 'S4', 'S5', 'S6', 'S7']))
+
+    # Testing only rib, fib and kernel next hops
+    assert rib.destinations.get('1.0.0.0/8').best_route.next_hops == {'S1', 'S2', 'S4', 'S5', 'S6', 'S7'}
+    assert rib.fib.routes['1.0.0.0/8'].next_hops == {'S1', 'S2', 'S4', 'S5', 'S6', 'S7'}
+    assert rib.fib.kernel.routes['1.0.0.0/8'] == {'S1', 'S2', 'S4', 'S5', 'S6', 'S7'}
+
+    assert rib.destinations.get('1.1.0.0/16').best_route.negative_next_hops == {'S1'}
+    assert rib.destinations.get('1.1.0.0/16').best_route.next_hops == {'S2', 'S4', 'S5', 'S6', 'S7'}
+    assert rib.fib.routes['1.1.0.0/16'].next_hops == {'S2', 'S4', 'S5', 'S6', 'S7'}
+    assert rib.fib.kernel.routes['1.1.0.0/16'] == {'S2', 'S4', 'S5', 'S6', 'S7'}
+
+    assert rib.destinations.get('1.1.1.0/24').best_route.negative_next_hops == {'S2'}
+    assert rib.destinations.get('1.1.1.0/24').best_route.next_hops == {'S4', 'S5', 'S6', 'S7'}
+    assert rib.fib.routes['1.1.1.0/24'].next_hops == {'S4', 'S5', 'S6', 'S7'}
+    assert rib.fib.kernel.routes['1.1.1.0/24'] == {'S4', 'S5', 'S6', 'S7'}
+
+    assert rib.destinations.get('1.1.2.0/24').best_route.negative_next_hops == {'S3'}
+    assert rib.destinations.get('1.1.2.0/24').best_route.next_hops == {'S2', 'S4', 'S5', 'S6', 'S7'}
+    assert rib.fib.routes['1.1.2.0/24'].next_hops == {'S2', 'S4', 'S5', 'S6', 'S7'}
+    assert rib.fib.kernel.routes['1.1.2.0/24'] == {'S2', 'S4', 'S5', 'S6', 'S7'}
+
+    assert rib.destinations.get('1.2.0.0/16').best_route.negative_next_hops == {'S4'}
+    assert rib.destinations.get('1.2.0.0/16').best_route.next_hops == {'S1', 'S2', 'S5', 'S6', 'S7'}
+    assert rib.fib.routes['1.2.0.0/16'].next_hops == {'S1', 'S2', 'S5', 'S6', 'S7'}
+    assert rib.fib.kernel.routes['1.2.0.0/16'] == {'S1', 'S2', 'S5', 'S6', 'S7'}
+
+    assert rib.destinations.get('1.2.1.0/24').best_route.negative_next_hops == {'S5'}
+    assert rib.destinations.get('1.2.1.0/24').best_route.next_hops == {'S1', 'S2', 'S6', 'S7'}
+    assert rib.fib.routes['1.2.1.0/24'].next_hops == {'S1', 'S2', 'S6', 'S7'}
+    assert rib.fib.kernel.routes['1.2.1.0/24'] == {'S1', 'S2', 'S6', 'S7'}
+
+    assert rib.destinations.get('1.2.2.0/24').best_route.negative_next_hops == {'S6'}
+    assert rib.destinations.get('1.2.2.0/24').best_route.next_hops == {'S1', 'S2', 'S5', 'S7'}
+    assert rib.fib.routes['1.2.2.0/24'].next_hops == {'S1', 'S2', 'S5', 'S7'}
+    assert rib.fib.kernel.routes['1.2.2.0/24'] == {'S1', 'S2', 'S5', 'S7'}
+
+    # Delete all routes from the RIB.
+    rib.del_route("1.0.0.0/8", S_SPF)
+    rib.del_route("1.1.0.0/16", S_SPF)
+    rib.del_route("1.1.1.0/24", S_SPF)
+    rib.del_route("1.1.2.0/24", S_SPF)
+    rib.del_route("1.2.0.0/16", S_SPF)
+    rib.del_route("1.2.1.0/24", S_SPF)
+    rib.del_route("1.2.2.0/24", S_SPF)
+
+    assert not rib.destinations.keys()
+    assert not rib.fib.routes.keys()
+    assert not rib.fib.kernel.routes.keys()
